@@ -74,25 +74,22 @@ graph TD
 This is the live workflow executed when a user submits a query. The system retrieves relevant images, translates them into text context, and generates a final answer.
 
 ```mermaid
-graph TD
+graph LR
     subgraph "Inference Pipeline (Real-Time RAG)"
-        direction TB
+        direction LR
 
-        U("User Text Query") --> R1["Encoder: CLIP ViT-L/14"];
-        R1 --> R2{"Query Vector"};
-        R2 --> R3["Search FAISS Index"];
-        
-        R3 --> G1["Retrieve Top-K Image Paths"];
-        G1 --> G2["Visual Bridge: BLIP-2"];
-        G2 --> G3{"Generated Visual Context (Text)"};
-        
-        U --> L1["Prompt Template"];
-        G3 --> L1;
-        
-        L1 --> L2["LLM: Llama 3"];
-        L2 --> O("Final Generated Answer");
-        
-        O --> UI["Display in Streamlit UI"];
+        U["User Text Query"] --> R1["Encoder: CLIP ViT-L/14"]
+        R1 --> R2["Query Vector"]
+        R2 --> R3["Search FAISS Index"]
+        R3 --> G1["Retrieve Top-K Image Paths"]
+        G1 --> G2["Visual Bridge: BLIP-2"]
+        G2 --> G3["Generated Visual Context (Text)"]
+
+        U --> L1["Prompt Template"]
+        G3 --> L1
+        L1 --> L2["LLM: Llama 3"]
+        L2 --> O["Final Generated Answer"]
+        O --> UI["Display in Streamlit UI"]
     end
 ```
 
