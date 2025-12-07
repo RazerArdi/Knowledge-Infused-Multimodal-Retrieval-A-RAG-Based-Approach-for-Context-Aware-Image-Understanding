@@ -15,6 +15,7 @@ from difflib import SequenceMatcher
 from transformers import CLIPProcessor, CLIPModel, Blip2Processor, Blip2ForConditionalGeneration
 
 # --- 0. CRITICAL: ENVIRONMENT SETUP ---
+# Ensure HF Cache points to the correct persistent path
 os.environ['HF_HOME'] = "/mnt/d/huggingface_cache" 
 
 # --- PAGE CONFIGURATION ---
@@ -28,8 +29,8 @@ st.set_page_config(
 # --- MEMORY MANAGEMENT ---
 def clear_memory():
     """
-    Forces garbage collection and clears CUDA cache to prevent Out-Of-Memory (OOM) errors.
-    This function should be called before and after heavy inference tasks.
+    Forces garbage collection and clears CUDA cache to manage memory usage efficiently.
+    This is crucial for preventing OOM errors during iterative inference.
     """
     gc.collect()
     if torch.cuda.is_available():
@@ -52,7 +53,8 @@ st.markdown("""
 # --- 1. BACKEND CONFIGURATION ---
 class Config:
     """
-    Central configuration class for file paths, model selection, and API endpoints.
+    Configuration class handling file paths, model identifiers, and API endpoints.
+    Centralizes all settings for easy modification.
     """
     BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     
@@ -78,10 +80,10 @@ class Config:
 @st.cache_resource(show_spinner=False)
 def load_captions_dataset():
     """
-    Loads ground truth captions from the CSV/Text dataset into a dictionary.
+    Loads the ground truth captions dataset into a dictionary structure.
     
     Returns:
-        defaultdict: Mapping of image filenames to a list of ground truth captions.
+        defaultdict: A dictionary mapping image filenames to a list of ground truth captions.
     """
     print(f"📂 Loading Captions from: {Config.CAPTIONS_FILE}")
     captions_dict = defaultdict(list)
@@ -107,8 +109,8 @@ def load_captions_dataset():
 @st.cache_resource(show_spinner=False)
 def load_retrieval_system():
     """
-    Initializes the CLIP model and loads the FAISS index for vector retrieval.
-    Includes logic to auto-detect index dimension and switch CLIP models accordingly.
+    Initializes and loads the CLIP model and FAISS index for vector retrieval.
+    Handles dimensionality checks to switch between Base and Large CLIP models automatically.
     
     Returns:
         tuple: (CLIPProcessor, CLIPModel, (faiss_index, metadata))
@@ -154,7 +156,8 @@ def load_retrieval_system():
 @st.cache_resource(show_spinner=False)
 def load_generative_system():
     """
-    Initializes the BLIP-2 model for image captioning using float16 precision.
+    Initializes and loads the BLIP-2 model for visual captioning.
+    Uses float16 precision for GPU efficiency.
     
     Returns:
         tuple: (Blip2Processor, Blip2ForConditionalGeneration)
@@ -176,15 +179,15 @@ def load_generative_system():
 
 def perform_retrieval(query_text, clip_processor, clip_model, vector_db, k=5):
     """
-    Executes semantic search using CLIP embeddings and FAISS.
-    Performs L2 normalization on query vectors to match IndexFlatIP (Cosine Similarity).
+    Executes the semantic search process using CLIP embeddings and FAISS vector search.
+    Performs L2 normalization on query vectors to align with IndexFlatIP (Cosine Similarity).
     
     Args:
-        query_text (str): User query.
-        k (int): Number of top results.
+        query_text (str): User's textual query.
+        k (int): Number of results to return.
         
     Returns:
-        list: Retrieval results.
+        list: Retrieval results including metadata and similarity scores.
     """
     index, metadata = vector_db
     
@@ -213,15 +216,16 @@ def perform_retrieval(query_text, clip_processor, clip_model, vector_db, k=5):
 
 def generate_context(images_data, blip_processor, blip_model, user_query_text=""):
     """
-    Generates visual descriptions using BLIP-2.
-    Uses 'Pure Visual' mode (no text prompt) to prevent hallucination.
-    Reduced 'num_return_sequences' to prevent CUDA OOM errors.
+    Generates rich visual descriptions using BLIP-2 in 'Pure Visual' mode (no text prompt).
+    Implements intelligent deduplication logic using SequenceMatcher.
+    
+    NOTE: Reduced num_return_sequences to 5 to prevent CUDA OOM on standard GPUs.
     
     Args:
-        images_data (list): List of image data.
-    
+        images_data (list): List of retrieved image dictionaries.
+        
     Returns:
-        list: Generated context strings.
+        list: Formatted descriptive strings for each image (Main Paragraph + Bullet Points).
     """
     contexts = []
     dtype = torch.float16 if Config.DEVICE == "cuda" else torch.float32
@@ -247,7 +251,7 @@ def generate_context(images_data, blip_processor, blip_model, user_query_text=""
                     top_p=0.90,              
                     temperature=0.6,         
                     repetition_penalty=1.2,
-                    num_return_sequences=5  # [FIX] Reduced from 15 to 5 to prevent OOM
+                    num_return_sequences=5  # [FIXED] 5 is safer than 15 for 2.7B model
                 )
             
             all_candidates = blip_processor.batch_decode(out, skip_special_tokens=True)
@@ -293,12 +297,13 @@ def generate_context(images_data, blip_processor, blip_model, user_query_text=""
 
 def check_ollama_status():
     """
-    Checks if Ollama API is reachable.
+    Checks the connectivity of the Ollama service on multiple potential endpoints.
     
     Returns:
-        tuple: (Status, URL)
+        tuple: (Boolean success, Active API URL)
     """
     urls = [Config.LLM_API_LOCAL, Config.LLM_API_WIN]
+    
     for url in urls:
         try:
             test_url = url.replace("/generate", "/tags")
@@ -311,24 +316,19 @@ def check_ollama_status():
 
 def query_llm(context_list, user_query, api_url):
     """
-    Audits evidence using Llama-3 iteratively (one image at a time) to ensure no rank is skipped.
-    Integrates Ground Truth and AI Vision for the audit.
-    
-    Args:
-        context_list (list): Combined context strings (BLIP + GT).
-        user_query (str): User's query.
-        
-    Returns:
-        str: Full audit report.
+    Sends combined evidence (BLIP + Ground Truth) to Llama-3 using an ITERATIVE approach.
+    Increased timeout to prevent 'Read timed out' errors on local hardware.
     """
     full_report = ""
     
-    progress_bar = st.progress(0, text="🕵️ Llama-3 is auditing evidence...")
+    # Progress bar for visual feedback during iterative processing
+    progress_bar = st.progress(0, text="🕵️ Llama-3 is auditing evidence against Ground Truth...")
     
     for i, context_item in enumerate(context_list):
         rank = i + 1
         progress_bar.progress((i + 1) / len(context_list), text=f"Auditing Rank {rank}/{len(context_list)}...")
 
+        # Prompt Spesifik per Gambar
         prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
 You are a Strict Data Auditor.
 Your task is to verify if ONE specific image matches the User Query based on provided evidence.
@@ -365,14 +365,18 @@ Query: "{user_query}"
             }
         }
 
+        # Helper internal function for clean request handling
         def send_request():
-            return requests.post(api_url, json=payload, timeout=30)
+            # [FIX] Timeout dinaikkan ke 120 detik (2 menit) agar tidak RTO
+            return requests.post(api_url, json=payload, timeout=120)
 
+        # Execution Logic with Retry
         try:
             response = send_request()
             
+            # Auto-retry on server overload
             if response.status_code == 500:
-                time.sleep(1)
+                time.sleep(2) # Istirahat sebentar
                 response = send_request()
                 
             if response.status_code == 200:
@@ -382,8 +386,11 @@ Query: "{user_query}"
             elif response.status_code == 404:
                 full_report += f"**RANK {rank}:** Error - Model not found.\n\n"
             else:
-                full_report += f"**RANK {rank}:** Error - API Failure.\n\n"
+                full_report += f"**RANK {rank}:** Error - API Failure {response.status_code}.\n\n"
                 
+        except requests.exceptions.Timeout:
+            # Handle spesifik jika masih timeout
+            full_report += f"**RANK {rank}:** Error - Llama-3 took too long (>120s).\n\n"
         except Exception as e:
             full_report += f"**RANK {rank}:** Connection Error: {e}\n\n"
     
@@ -406,6 +413,9 @@ def main():
             $$
             \\text{Sim}(A, B) = \\frac{A \\cdot B}{\\|A\\| \\|B\\|}
             $$
+            
+            *Notes:*
+            Vectors are L2-normalized (`||A||=1`), so the Dot Product in FAISS (`IndexFlatIP`) equals Cosine Similarity.
             """)
         
         st.markdown("---")
@@ -456,19 +466,47 @@ def main():
             ret_start = time.time()
             results = perform_retrieval(query, clip_proc, clip_model, vector_db, k=top_k)
 
-        # Metrics
+        # Metrics Calculation
         scores = [r['score'] for r in results]
+        
+        # Calculate GT Match Rate (Keyword matching)
+        relevant_count = 0
+        query_words = set(query.lower().split())
+        
+        for item in results:
+            fname = item['filename']
+            is_relevant = False
+            if fname in gt_captions:
+                for cap in gt_captions[fname]:
+                    cap_words = set(cap.lower().split())
+                    overlap = len(query_words.intersection(cap_words))
+                    # Match if 50% query words exist in caption
+                    if len(query_words) > 0 and (overlap / len(query_words) >= 0.5):
+                        is_relevant = True
+                        break
+            if is_relevant:
+                relevant_count += 1
+        
+        gt_match_rate = relevant_count / len(results) if results else 0
+
+        # DISPLAY DYNAMIC METRICS
         st.markdown("### 📊 Performance Metrics")
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Retrieval Latency", f"{(time.time()-start_time)*1000:.1f} ms")
-        m2.metric("Top-1 Score", f"{scores[0]:.4f}")
-        m3.metric("Avg Score", f"{np.mean(scores):.4f}")
-        m4.metric("Items", f"{len(results)}")
+        
+        # Dynamic Metric: Score Range instead of just Top-1
+        if scores:
+            m2.metric(f"Sim Score Range", f"{scores[0]:.3f} - {scores[-1]:.3f}")
+        else:
+            m2.metric("Sim Score", "0.000")
+            
+        m3.metric(f"Avg Sim (Top-{top_k})", f"{np.mean(scores):.4f}")
+        m4.metric(f"GT Match (Top-{top_k})", f"{gt_match_rate:.0%}", help="Precision@K based on Ground Truth matching")
         st.divider()
 
         col_left, col_right = st.columns([1.2, 1])
 
-        # 2. EVIDENCE DISPLAY
+        # 2. EVIDENCE DISPLAY (LEFT)
         with col_left:
             st.subheader(f"Evidence (Top-{top_k})")
             tabs = st.tabs([f"Rank {i+1}" for i in range(len(results))])
@@ -493,26 +531,30 @@ def main():
                     except Exception as e:
                         st.error(f"Image error: {e}")
 
-        # 3. GENERATIVE PHASE
+        # 3. GENERATIVE PHASE (RIGHT)
         with col_right:
             st.subheader("Context-Aware Generation")
             
             with st.status("Processing...", expanded=True) as gen_status:
                 st.write("👁️ BLIP-2: Analyzing Visuals...")
+                # Panggil BLIP (Visual Only)
                 visual_contexts = generate_context(results, blip_proc, blip_model)
                 
-                # DATA FUSION
+                # --- LOGIC PENGGABUNGAN DATA (BLIP + GROUND TRUTH) ---
                 st.write("📂 Data Fusion: Merging Vision + Dataset Facts...")
                 rich_context_for_llm = []
                 
                 for i, blip_text in enumerate(visual_contexts):
                     fname = results[i]['filename']
                     
+                    # Ambil Ground Truth
                     gt_text = "(No verified data available)"
                     if fname in gt_captions:
+                        # Ambil 10 caption pertama
                         gt_list = gt_captions[fname][:10]
                         gt_text = "\n".join([f"- {c}" for c in gt_list])
                     
+                    # Gabungkan jadi satu blok teks untuk Llama
                     combined_entry = (
                         f"=== IMAGE #{i+1} (Rank {i+1}) ===\n"
                         f"[AI Vision / BLIP-2 Output]:\n{blip_text}\n\n"
@@ -524,6 +566,7 @@ def main():
                 st.write("🧠 Llama-3: Auditing Evidence...")
                 if ollama_ok:
                     gen_start = time.time()
+                    # Kirim ke fungsi Iteratif
                     final_answer = query_llm(rich_context_for_llm, query, Config.LLM_API)
                     gen_latency = time.time() - gen_start
                 else:
@@ -532,7 +575,8 @@ def main():
                 
                 gen_status.update(label="Done", state="complete", expanded=False)
             
-            # MINIMIZE UI
+            # --- [FITUR MINIMIZE SESUAI REQUEST] ---
+            # Output Llama-3 sekarang bisa di-minimize/expand
             with st.expander("🤖 View AI Response (Llama-3 Audit)", expanded=True):
                 if "Error" in final_answer:
                     st.error(final_answer)
@@ -540,6 +584,7 @@ def main():
                     st.markdown(final_answer)
                     st.caption(f"Latency: {gen_latency:.2f}s")
             
+            # Output BLIP-2 (Tetap ada sebagai pembanding)
             with st.expander("👁️ View Generated Visual Contexts (BLIP-2 Output)", expanded=False):
                 for idx, ctx in enumerate(visual_contexts):
                     st.markdown(f"**Img {idx+1}:**")
