@@ -14,7 +14,7 @@ from collections import defaultdict
 from difflib import SequenceMatcher
 from transformers import CLIPProcessor, CLIPModel, Blip2Processor, Blip2ForConditionalGeneration
 
-# [CRITICAL] Library untuk PEFT (Fine-Tuning) & Metrik Akademis
+# Library untuk PEFT (Fine-Tuning) & Metrik Akademis
 from peft import PeftModel
 
 # Import NLTK untuk BLEU Score
@@ -167,7 +167,7 @@ def load_generative_system():
         print(f"✅ FOUND FINE-TUNED ADAPTER! Loading from: {ADAPTER_PATH}")
         try:
             model = PeftModel.from_pretrained(model, ADAPTER_PATH)
-            print("🚀 Successfully loaded Fine-Tuned BLIP-2.")
+            print("Successfully loaded Fine-Tuned BLIP-2.")
         except Exception as e:
             st.warning(f"⚠️ Failed to load adapter: {e}. Using base model.")
     else:
@@ -471,7 +471,7 @@ def main():
         gt_match_rate = relevant_count / len(results) if results else 0
 
         # DISPLAY RETRIEVAL METRICS
-        st.markdown("### 📊 Performance Metrics")
+        st.markdown("### Performance Metrics")
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Retrieval Latency", f"{(time.time()-start_time)*1000:.1f} ms")
         if scores: m2.metric(f"Sim Score Range", f"{scores[0]:.3f} - {scores[-1]:.3f}")
@@ -506,10 +506,10 @@ def main():
         with col_right:
             st.subheader("Context-Aware Generation")
             with st.status("Processing...", expanded=True) as gen_status:
-                st.write("👁️ BLIP-2: Analyzing Visuals...")
+                st.write("BLIP-2: Analyzing Visuals...")
                 visual_contexts = generate_context(results, blip_proc, blip_model)
                 
-                st.write("📂 Data Fusion: Merging Vision + Dataset Facts...")
+                st.write("Data Fusion: Merging Vision + Dataset Facts...")
                 rich_context_for_llm = []
                 for i, blip_text in enumerate(visual_contexts):
                     fname = results[i]['filename']
@@ -525,7 +525,7 @@ def main():
                     )
                     rich_context_for_llm.append(combined_entry)
 
-                st.write("🧠 Llama-3: Auditing Evidence...")
+                st.write("Llama-3: Auditing Evidence...")
                 if ollama_ok:
                     gen_start = time.time()
                     final_answer = query_llm(rich_context_for_llm, query, Config.LLM_API)
@@ -542,7 +542,7 @@ def main():
                 gen_status.update(label="Done", state="complete", expanded=False)
             
             # Display Final Answer & RAG Metrics
-            with st.expander("🤖 View AI Response (Llama-3 Audit)", expanded=True):
+            with st.expander("View AI Response (Llama-3 Audit)", expanded=True):
                 if "Error" in final_answer: st.error(final_answer)
                 else: st.markdown(final_answer)
                 st.divider()
@@ -555,7 +555,7 @@ def main():
             
             # Display Generation Metrics (BLEU & ROUGE)
             # [FITUR UTAMA: AKADEMIS METRIC UNTUK CAPTIONING (BLEU & ROUGE)]
-            with st.expander("👁️ View Generated Visual Contexts & Metrics", expanded=False):
+            with st.expander("View Generated Visual Contexts & Metrics", expanded=False):
                 st.info("ℹ️ **Captioning Metrics:** Evaluasi seberapa mirip deskripsi AI dengan deskripsi Manusia (Ground Truth).")
                 
                 for idx, ctx in enumerate(visual_contexts):
@@ -588,12 +588,10 @@ def main():
                             value=f"{b_score:.4f}", 
                             help="Mengukur akurasi urutan kata (n-gram). Seberapa tepat kata-kata yang dipilih AI dibandingkan referensi manusia."
                         )
-                        st.caption(f"Status: **{b_label}**") # Status khusus BLEU
+                        st.caption(f"Status: **{b_label}**")
                         
-                        st.divider() # Garis pemisah kecil
+                        st.divider() 
                         
-                        # --- ROUGE-L METRIC ---
-                        # Tentukan warna status ROUGE
                         r_score = metrics['rougeL']
                         if r_score > 0.35: r_label = "Excellent 🟢"
                         elif r_score > 0.20: r_label = "Good 🟡"
@@ -604,9 +602,9 @@ def main():
                             value=f"{r_score:.4f}",
                             help="Mengukur kelengkapan struktur kalimat (LCS). Seberapa lengkap informasi/frasa yang tertangkap dibandingkan referensi manusia."
                         )
-                        st.caption(f"Status: **{r_label}**") # Status khusus ROUGE
+                        st.caption(f"Status: **{r_label}**") 
 
-                    st.divider() # Garis pemisah antar gambar
+                    st.divider() 
 
         st.divider()
         st.caption(f"Total Time: {time.time() - start_time:.2f}s")
