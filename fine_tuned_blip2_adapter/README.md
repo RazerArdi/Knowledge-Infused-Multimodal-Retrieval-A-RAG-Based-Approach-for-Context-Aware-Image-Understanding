@@ -1,206 +1,81 @@
 ---
 base_model: Salesforce/blip2-opt-2.7b
 library_name: peft
+license: apache-2.0
 tags:
-- base_model:adapter:Salesforce/blip2-opt-2.7b
+- vision-language-model
+- image-captioning
 - lora
+- peft
+- flickr30k
+- multimodal-rag
 - transformers
 ---
 
-# Model Card for Model ID
+# BLIP-2 (OPT-2.7b) Fine-Tuned on Flickr30k
 
-<!-- Provide a quick summary of what the model is/does. -->
+<div align="center">
 
+![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
+![PEFT](https://img.shields.io/badge/PEFT-LoRA-orange)
+![Task](https://img.shields.io/badge/Task-Image%20Captioning-green)
 
+</div>
 
-## Model Details
+## Model Summary
 
-### Model Description
+This is a **Low-Rank Adaptation (LoRA)** adapter for the **[Salesforce/blip2-opt-2.7b](https://huggingface.co/Salesforce/blip2-opt-2.7b)** model. 
 
-<!-- Provide a longer summary of what this model is. -->
+It has been fine-tuned on the **Flickr30k** dataset to improve the model's ability to generate descriptive, context-rich image captions suitable for **Multimodal Retrieval Augmented Generation (RAG)** systems. By using PEFT (Parameter-Efficient Fine-Tuning), this adapter allows the base model to adapt to the specific linguistic style of Flickr30k without modifying the original pre-trained weights.
 
+- **Developed by:** [Nama Anda / Your Name]
+- **Model type:** Vision-Language Model (LoRA Adapter)
+- **Language:** English
+- **Finetuned from:** Salesforce/blip2-opt-2.7b
 
-
-- **Developed by:** [More Information Needed]
-- **Funded by [optional]:** [More Information Needed]
-- **Shared by [optional]:** [More Information Needed]
-- **Model type:** [More Information Needed]
-- **Language(s) (NLP):** [More Information Needed]
-- **License:** [More Information Needed]
-- **Finetuned from model [optional]:** [More Information Needed]
-
-### Model Sources [optional]
-
-<!-- Provide the basic links for the model. -->
-
-- **Repository:** [More Information Needed]
-- **Paper [optional]:** [More Information Needed]
-- **Demo [optional]:** [More Information Needed]
-
-## Uses
-
-<!-- Address questions around how the model is intended to be used, including the foreseeable users of the model and those affected by the model. -->
+## Intended Uses
 
 ### Direct Use
-
-<!-- This section is for the model use without fine-tuning or plugging into a larger ecosystem/app. -->
-
-[More Information Needed]
-
-### Downstream Use [optional]
-
-<!-- This section is for the model use when fine-tuned for a task, or when plugged into a larger ecosystem/app -->
-
-[More Information Needed]
+- **Image Captioning:** Generating detailed descriptions for images.
+- **Visual Context Generation:** Serving as the "Vision Encoder" in Multimodal RAG pipelines to convert visual data into text for LLM reasoning.
 
 ### Out-of-Scope Use
-
-<!-- This section addresses misuse, malicious use, and uses that the model will not work well for. -->
-
-[More Information Needed]
-
-## Bias, Risks, and Limitations
-
-<!-- This section is meant to convey both technical and sociotechnical limitations. -->
-
-[More Information Needed]
-
-### Recommendations
-
-<!-- This section is meant to convey recommendations with respect to the bias, risk, and technical limitations. -->
-
-Users (both direct and downstream) should be made aware of the risks, biases and limitations of the model. More information needed for further recommendations.
-
-## How to Get Started with the Model
-
-Use the code below to get started with the model.
-
-[More Information Needed]
-
-## Training Details
-
-### Training Data
-
-<!-- This should link to a Dataset Card, perhaps with a short stub of information on what the training data is all about as well as documentation related to data pre-processing or additional filtering. -->
-
-[More Information Needed]
-
-### Training Procedure
-
-<!-- This relates heavily to the Technical Specifications. Content here should link to that section when it is relevant to the training procedure. -->
-
-#### Preprocessing [optional]
-
-[More Information Needed]
-
-
-#### Training Hyperparameters
-
-- **Training regime:** [More Information Needed] <!--fp32, fp16 mixed precision, bf16 mixed precision, bf16 non-mixed precision, fp16 non-mixed precision, fp8 mixed precision -->
-
-#### Speeds, Sizes, Times [optional]
-
-<!-- This section provides information about throughput, start/end time, checkpoint size if relevant, etc. -->
-
-[More Information Needed]
-
-## Evaluation
-
-<!-- This section describes the evaluation protocols and provides the results. -->
-
-### Testing Data, Factors & Metrics
-
-#### Testing Data
-
-<!-- This should link to a Dataset Card if possible. -->
-
-[More Information Needed]
-
-#### Factors
-
-<!-- These are the things the evaluation is disaggregating by, e.g., subpopulations or domains. -->
-
-[More Information Needed]
-
-#### Metrics
-
-<!-- These are the evaluation metrics being used, ideally with a description of why. -->
-
-[More Information Needed]
-
-### Results
-
-[More Information Needed]
-
-#### Summary
-
-
-
-## Model Examination [optional]
-
-<!-- Relevant interpretability work for the model goes here -->
-
-[More Information Needed]
-
-## Environmental Impact
-
-<!-- Total emissions (in grams of CO2eq) and additional considerations, such as electricity usage, go here. Edit the suggested text below accordingly -->
-
-Carbon emissions can be estimated using the [Machine Learning Impact calculator](https://mlco2.github.io/impact#compute) presented in [Lacoste et al. (2019)](https://arxiv.org/abs/1910.09700).
-
-- **Hardware Type:** [More Information Needed]
-- **Hours used:** [More Information Needed]
-- **Cloud Provider:** [More Information Needed]
-- **Compute Region:** [More Information Needed]
-- **Carbon Emitted:** [More Information Needed]
-
-## Technical Specifications [optional]
-
-### Model Architecture and Objective
-
-[More Information Needed]
-
-### Compute Infrastructure
-
-[More Information Needed]
-
-#### Hardware
-
-[More Information Needed]
-
-#### Software
-
-[More Information Needed]
-
-## Citation [optional]
-
-<!-- If there is a paper or blog post introducing the model, the APA and Bibtex information for that should go in this section. -->
-
-**BibTeX:**
-
-[More Information Needed]
-
-**APA:**
-
-[More Information Needed]
-
-## Glossary [optional]
-
-<!-- If relevant, include terms and calculations in this section that can help readers understand the model or model card. -->
-
-[More Information Needed]
-
-## More Information [optional]
-
-[More Information Needed]
-
-## Model Card Authors [optional]
-
-[More Information Needed]
-
-## Model Card Contact
-
-[More Information Needed]
-### Framework versions
-
-- PEFT 0.18.0
+- Not intended for OCR (Optical Character Recognition).
+- Not intended for medical imaging diagnosis without further domain-specific training.
+
+## How to Get Started
+
+To use this model, you need to load the base BLIP-2 model and then apply this LoRA adapter.
+
+```python
+import torch
+from PIL import Image
+from transformers import Blip2Processor, Blip2ForConditionalGeneration
+from peft import PeftModel
+
+# 1. Load Configuration
+device = "cuda" if torch.cuda.is_available() else "cpu"
+dtype = torch.float16 if device == "cuda" else torch.float32
+
+# 2. Load Base Model
+base_model_id = "Salesforce/blip2-opt-2.7b"
+processor = Blip2Processor.from_pretrained(base_model_id)
+model = Blip2ForConditionalGeneration.from_pretrained(
+    base_model_id, 
+    torch_dtype=dtype, 
+    device_map="auto"
+)
+
+# 3. Load This Fine-Tuned Adapter
+adapter_path = "path/to/fine_tuned_blip2_adapter" # Point to this folder
+model = PeftModel.from_pretrained(model, adapter_path)
+model.eval()
+
+# 4. Inference
+image = Image.open("test_image.jpg").convert('RGB')
+inputs = processor(images=image, return_tensors="pt").to(device, dtype)
+
+generated_ids = model.generate(**inputs, max_new_tokens=50)
+caption = processor.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
+
+print(f"Generated Caption: {caption}")
